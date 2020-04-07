@@ -1,0 +1,4 @@
+//cnnNetweights - https://drive.google.com/file/d/1ddRn7qBIkXeRlS9xJvsi0umjeSJfo4_r/view?usp=sharing 
+//vgg16-transfernet - https://drive.google.com/file/d/10PVxDznNyYYGz_rGsUx4QzNzMt_OjMMQ/view?usp=sharing
+//vgg16 extracted weights - https://drive.google.com/file/d/15WITbWa42cVBDlkY-70Tgyb8TBrYZUfs/view?usp=sharing
+//dataset - https://s3-us-west-1.amazonaws.com/udacity-aind/dog-project/dogImages.zip
