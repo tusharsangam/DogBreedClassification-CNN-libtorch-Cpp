@@ -40,7 +40,8 @@ void Train(DataLoader& data_loader, DataLoader& test_data_loader, Model& model, 
             optimizer.step();
             loss = loss.to(torch::kCPU);
             int batch_idx = batch.value().batch_idx;
-            train_loss = train_loss + ((1 / (batch_idx)) * (*loss.data_ptr<float>() - train_loss));
+            float* lossf = reinterpret_cast<float*>(loss.data_ptr());
+            train_loss = train_loss + ((1 / (batch_idx)) * (*lossf - train_loss));
             //std::cout <<"average loss " <<train_loss << " for batch_idx "<< batch_idx << std::endl;
             batch = data_loader.next();
         }
@@ -59,11 +60,13 @@ void Train(DataLoader& data_loader, DataLoader& test_data_loader, Model& model, 
             auto loss = torch::nn::functional::cross_entropy(output, labels, torch::nn::functional::CrossEntropyFuncOptions().ignore_index(-100).reduction(torch::kMean));
             loss = loss.to(torch::kCPU);
             int batch_idx = testbatch.value().batch_idx;
-            valid_loss = valid_loss + ((1 / (batch_idx)) * (*loss.data_ptr<float>() - valid_loss));
+            float* lossf = reinterpret_cast<float*>(loss.data_ptr());
+            valid_loss = valid_loss + ((1 / (batch_idx)) * (*lossf - valid_loss));
             auto pred = output.data().argmax(1);
             auto correctionmatrix = torch::eq(pred, labels);
             auto sum = torch::sum(correctionmatrix).to(torch::kCPU);
-            correct += *sum.data_ptr<int64>();
+            int64_t* sumd = reinterpret_cast<int64_t*>(sum.data_ptr());
+            correct += *sumd;
             total += data.size(0);
             //std::cout <<"average loss " << valid_loss << " for batch_idx " << batch_idx << std::endl;
             testbatch = test_data_loader.next();
@@ -106,14 +109,16 @@ void Test(DataLoader& test_data_loader, Model& model) {
         auto loss = torch::nn::functional::cross_entropy(output, labels, torch::nn::functional::CrossEntropyFuncOptions().ignore_index(-100).reduction(torch::kMean));
         loss = loss.to(torch::kCPU);
         int batch_idx = testbatch.value().batch_idx;
-        valid_loss = valid_loss + ((1 / (batch_idx)) * (*loss.data_ptr<float>() - valid_loss));
+        float* lossf = reinterpret_cast<float*>(loss.data_ptr());
+        valid_loss = valid_loss + ((1 / (batch_idx)) * (*lossf - valid_loss));
         
         auto pred = output.data().argmax(1);
         
         
         auto correctionmatrix = torch::eq(pred, labels);
         auto sum = torch::sum(correctionmatrix).to(torch::kCPU);
-        correct += *sum.data_ptr<int64>();
+        int64_t* sumd = reinterpret_cast<int64_t*>(sum.data_ptr());
+        correct += *sumd;
         total += data.size(0);
         testbatch = test_data_loader.next();
     }
@@ -125,7 +130,8 @@ void Test(DataLoader& test_data_loader, Model& model) {
 
 template <typename Model>
 void Evaluate(Model& model, bool ispretrained=false) {
-    boost::filesystem::path p("..\\evaluation");
+    bool isCUDAAvailable = torch::cuda::is_available();
+    boost::filesystem::path p("../evaluation");
     boost::filesystem::directory_iterator start(p);
     boost::filesystem::directory_iterator end;
     std::vector<std::string> filenames;
@@ -145,18 +151,29 @@ void Evaluate(Model& model, bool ispretrained=false) {
             
             image_tensor = normalize(image_tensor);
             image_tensor = image_tensor.unsqueeze_(0);
-            std::cout << image_tensor.size(0) << " x " << image_tensor.size(1) << " x " << image_tensor.size(1) << " x " << image_tensor.size(2) << std::endl;
+            //std::cout << image_tensor.size(0) << " x " << image_tensor.size(1) << " x " << image_tensor.size(1) << " x " << image_tensor.size(2) << std::endl;
             model->eval();
-            model->to(torch::kCUDA);
-            image_tensor = image_tensor.to(torch::kCUDA);
+            if (isCUDAAvailable) {
+                model->to(torch::kCUDA);
+                image_tensor = image_tensor.to(torch::kCUDA);
+            }
             
             auto output = model->forward(image_tensor);
             output = smax->forward(output);
             output = output.argmax(1);
             output = output.to(torch::kCPU);
-            
-            std::cout << "Predicted bit is " << *output.data_ptr<int64>() << " which means " << filename << " resembles " << getClassNameByClassId(*output.data_ptr<int64>()) << "\n";
-            
+            int64_t* prediction = reinterpret_cast<int64_t*>(output.data_ptr());
+            if (ispretrained) {
+                if (151 <= *prediction <= 268) {
+                    std::cout << "Predicted bit is " << *prediction << " which means " << filename << " is of a dog" << std::endl;
+                }
+                else {
+                    std::cout << "Predicted bit is " << *prediction << " which means " << filename << " is not of a dog" << std::endl;
+                }
+            }
+            else {
+                std::cout << "Predicted bit is " << *prediction << " which means " << filename << " resembles " << getClassNameByClassId(*prediction) << "\n";
+            }   
         }
     }
 }   
@@ -184,27 +201,92 @@ int main() {
     };
   
     
-    
     DogBreedDataset dataset("train", lambda_transform_train);
-    DogBreedDataset validdataset("test", lambda_transform_valid);
-    DogBreedDataset testdataset("valid", lambda_transform_valid);
     DataLoader data_loader(dataset, kBatchSize);
-    DataLoader test_data_loader(validdataset, kBatchSize);
+    
+    DogBreedDataset testdataset("valid", lambda_transform_valid);
     DataLoader valid_data_loader(testdataset, kBatchSize);
+    
+    DogBreedDataset validdataset("test", lambda_transform_valid);
+    DataLoader test_data_loader(validdataset, kBatchSize);
+    
+    
     bool isCUDAAvailable = torch::cuda::is_available();
     std::cout << "Is Cuda Available ? "<< isCUDAAvailable << std::endl;
-      
+    
+
+    std::cout << "Please Choose the Network you want to use " << std::endl;
+    std::cout << "0. For Transfer Learning Network" << std::endl;
+    std::cout << "1. For Network Built from scratch" << std::endl;
+    std::cout << "2. For Network VGG-16 network" << std::endl;
+    
+    int kNetwork = -1; int kOperation = -1;
+    std::cin >> kNetwork;
+    std::cout << "Choose the operation "<<std::endl;
+    std::cout << "0. Evaluation" << std::endl;
+    std::cout << "1. Test" << std::endl;
+    std::cout << "2. Train" << std::endl;
+    std::cin >> kOperation;
     
     
-    auto model = cnnNet("..\\weights");
-    model->load();
-    torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(0.01));
     
-    Train<DataLoader, cnnNet, torch::optim::Adam>(data_loader, test_data_loader, model, optimizer);
-    //Test<DataLoader, TransferLearning>(valid_data_loader, model);
-    //Evaluate<TransferLearning>(model);
+    if (kNetwork == 0) {
+        auto model = TransferLearning("../weights");
+        if (kOperation == 0) {
+            Evaluate<TransferLearning>(model);
+        }
+        else if(kOperation == 1){
+            
+            Test<DataLoader, TransferLearning>(valid_data_loader, model);
+        }
+        else if (kOperation == 2) {
+            
+            torch::optim::RMSprop optimizer(model->last_layer->parameters(), torch::optim::RMSpropOptions(0.001));
+            Train<DataLoader, TransferLearning, torch::optim::RMSprop>(data_loader, test_data_loader, model, optimizer);
+        }
+        else {
+            std::cout << "sorry action option not recognised" << std::endl;
+        }
+    }else if (kNetwork == 1) {
+        auto model = cnnNet("../weights");
+        if (kOperation == 0) {
+            Evaluate<cnnNet>(model);
+        }
+        else if (kOperation == 1) {
+
+            Test<DataLoader, cnnNet>(valid_data_loader, model);
+        }
+        else if (kOperation == 2) {
+
+            torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(0.01));
+            Train<DataLoader, cnnNet, torch::optim::Adam>(data_loader, test_data_loader, model, optimizer);
+        }
+        else {
+            std::cout << "sorry action option not recognised" << std::endl;
+        }
+    }else if (kNetwork == 3) {
+        auto model = VGG16("../weights");
+        if (kOperation == 0) {
+            Evaluate<VGG16>(model, true);
+        }
+        else if (kOperation == 1) {
+
+            Test<DataLoader, VGG16>(valid_data_loader, model);
+        }
+        else if (kOperation == 2) {
+            std::cout << "Sorry can't train on VGG-16 net" << std::endl;   
+        }
+         else {
+            std::cout << "sorry action option not recognised" << std::endl;
+        }
     
-         
+    }
+    else {
+        std::cout << "Network option not recognised" << std::endl;
+    }
+    
+    std::cout << "Press Any Key to Shutdown program" << std::endl;
+    std::cin.get();
     std::cin.get();
 }
 

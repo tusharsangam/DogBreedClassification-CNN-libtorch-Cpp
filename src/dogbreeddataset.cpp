@@ -11,7 +11,7 @@ auto normalize = torch::data::transforms::Normalize<>({ 0.485,0.456,0.406 }, { 0
 std::unordered_map<int, std::string >_inttostringlabels;
 std::unordered_map<std::string, int >_stringtointlabels;
 bool _islookupset = false;
-std::string _parentdir = "C:\\dogImages";
+std::string _parentdir = "../dogImages";
 
 void DogBreedDataset::read_directory(const std::string& name)
 {
@@ -28,7 +28,7 @@ void DogBreedDataset::read_directory(const std::string& name)
             _inttostringlabels[kdogtype] = dogtype;
         }
 
-        boost::filesystem::path childp(name + "\\" + dogtype);
+        boost::filesystem::path childp(name + "/" + dogtype);
         boost::filesystem::directory_iterator startp(childp);
 
         for (auto childit = startp; childit != end; ++childit) {
@@ -70,7 +70,7 @@ DogBreedDataset::DogBreedDataset(std::string type, void (*transform_func)(cv::Ma
         _stringtointlabels.reserve(133);
         _inttostringlabels.reserve(133);
     }
-    read_directory(_parentdir + "\\" + type);
+    read_directory(_parentdir + "/" + type);
     
     numberofworkers = 4;
 

@@ -13,9 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="stateloader">
-      <UniqueIdentifier>{1def44c4-2a35-4754-b6d9-bc1fa59032d5}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source.cpp">
@@ -36,15 +33,6 @@
     <ClCompile Include="model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="stateloader.cpp">
-      <Filter>stateloader</Filter>
-    </ClCompile>
-    <ClCompile Include="debug.cpp">
-      <Filter>stateloader</Filter>
-    </ClCompile>
-    <ClCompile Include="nnutils.cpp">
-      <Filter>stateloader</Filter>
-    </ClCompile>
     <ClCompile Include="dataloader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -59,20 +47,8 @@
     <ClInclude Include="model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="stateloader.h">
-      <Filter>stateloader</Filter>
-    </ClInclude>
-    <ClInclude Include="debug.h">
-      <Filter>stateloader</Filter>
-    </ClInclude>
-    <ClInclude Include="nnutils.h">
-      <Filter>stateloader</Filter>
-    </ClInclude>
     <ClInclude Include="dataloader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

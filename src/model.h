@@ -12,11 +12,11 @@ struct cnnNetImpl : Module {
 	Linear inference;
 	Dropout dp;
 	std::string savepath;
-	cnnNetImpl::cnnNetImpl(std::string savedir);
+	cnnNetImpl(std::string savedir);
 	torch::Tensor forward(torch::Tensor x);
 	void load();
 	void save(bool isoncuda);
-	torch::Tensor predict(std::string& filepath);
+	
 };
 
 
@@ -48,14 +48,14 @@ struct VGG16Impl :Module {
 		),
 		avgpool(register_module("avgpool", AdaptiveAvgPool2d(AdaptiveAvgPool2dOptions({ 7,7 }))))
 	{	
-		filename = filedir_+"\\vgg16-weights.bin";
+		filename = filedir_+"/vgg16-weights.bin";
 		//std::cout << filename << std::endl;
 		load();
 	}
 	torch::Tensor forward(torch::Tensor input);
 	void load();
 	void save();
-	torch::Tensor predict(std::string& filepath);
+	
 };
 
 
@@ -91,8 +91,8 @@ struct TransferLearningImpl : torch::nn::Module {
 		))
 		
 	{
-		classifierfilename = filename + "\\vgg16-transfer-learning-model.bin";
-		featuresfilename = filename+"\\vgg16-weights.bin";
+		classifierfilename = filename + "/vgg16-transfer-learning-model.bin";
+		featuresfilename = filename+"/vgg16-weights.bin";
 		load();
 		//freeze_features();
 	}
@@ -100,7 +100,7 @@ struct TransferLearningImpl : torch::nn::Module {
 	void load();
 	void save(bool isongpu);
 	void freeze_features();
-	torch::Tensor predict(std::string& filepath);
+	
 };
 
 TORCH_MODULE(VGG16);

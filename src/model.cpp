@@ -32,7 +32,7 @@ cnnNetImpl::cnnNetImpl(std::string savedir):
 	dp(register_module("dropout", Dropout(DropoutOptions(0.25)))),
 	inference(register_module("inference", Linear(256, 133)))
 {
-	savepath += "\\cnnNet-weights.bin";
+	savepath += "/cnnNet-weights.bin";
 }
 
 
@@ -119,28 +119,6 @@ void cnnNetImpl::save(bool ismodeloncuda)
 	}
 }
 
-torch::Tensor cnnNetImpl::predict(std::string& filepath)
-{
-	torch::nn::Softmax smax(torch::nn::SoftmaxOptions(1));
-	auto image = read_image(filepath);
-	CenterCrop(224, image);
-	auto input = convert_to_tensor(image);
-	auto normalize = torch::data::transforms::Normalize<>({ 0.485, 0.456, 0.406 }, { 0.229, 0.224, 0.225 });
-	input = normalize(input);
-	input = input.unsqueeze(0);
-	std::cout << "Input tensor size " << input.size(0) << " x " << input.size(1) << " x " << input.size(2) << " x " << input.size(3) << std::endl;
-	eval();
-	bool isCUDAAvailable = torch::cuda::is_available();
-	if (isCUDAAvailable) {
-		to(torch::kCUDA);
-		input = input.to(torch::kCUDA);
-	}
-	auto output = forward(input);
-	output = smax->forward(output);
-	output = output.argmax();
-	output = output.to(torch::kCPU);
-	return output;
-}
 
 std::vector<int>vgg16featureconfiguration{ 64, 64, -1, 128, 128, -1, 256, 256, 256, -1, 512, 512, 512, -1, 512, 512, 512, -1 };
 
@@ -249,28 +227,7 @@ void VGG16Impl::save() {
 	torch::autograd::GradMode::set_enabled(true);
 }
 
-torch::Tensor VGG16Impl::predict(std::string& filepath)
-{
-	torch::nn::Softmax smax(torch::nn::SoftmaxOptions(1));
-	auto image = read_image(filepath);
-	Resize(224, image);
-	auto input = convert_to_tensor(image);
-	auto normalize = torch::data::transforms::Normalize<>({ 0.485, 0.456, 0.406 }, { 0.229, 0.224, 0.225 });
-	input = normalize(input);
-	input = input.unsqueeze(0);
-	std::cout << "Input tensor size " << input.size(0) << " x " << input.size(1) << " x " << input.size(2) << " x " << input.size(3) << std::endl;
-	eval();
-	bool isCUDAAvailable = torch::cuda::is_available();
-	if (isCUDAAvailable) {
-		to(torch::kCUDA);
-		input = input.to(torch::kCUDA);
-	}
-	auto output = forward(input);
-	output = smax->forward(output);
-	output = output.argmax();
-	output = output.to(torch::kCPU);
-	return output;
-}
+
 
 torch::Tensor TransferLearningImpl::forward(torch::Tensor input)
 {
@@ -408,28 +365,4 @@ void TransferLearningImpl::freeze_features()
 		auto* p = params.find(pair.key());
 		p->requires_grad_(false);
 	}*/
-}
-
-torch::Tensor TransferLearningImpl::predict(std::string& filepath)
-{	
-	//std::cout << filepath << std::endl;
-	torch::nn::Softmax smax(torch::nn::SoftmaxOptions(1));
-	auto image = read_image(filepath);
-	CenterCrop(224, image);
-	auto input = convert_to_tensor(image);
-	auto normalize = torch::data::transforms::Normalize<>({ 0.485, 0.456, 0.406 }, { 0.229, 0.224, 0.225 });
-	input = normalize(input);
-	input = input.unsqueeze_(0);
-	std::cout << "Input tensor size " << input.size(0) << " x " << input.size(1) << " x " << input.size(2) << " x " << input.size(3) << std::endl;
-	this->eval();
-	bool isCUDAAvailable = torch::cuda::is_available();
-	if (isCUDAAvailable) {
-		this->to(torch::kCUDA);
-		input = input.to(torch::kCUDA);
-	}
-	auto output = this->forward(input);
-	output = smax->forward(output);
-	output = output.argmax(1);
-	output = output.to(torch::kCPU);
-	return output;
 }
